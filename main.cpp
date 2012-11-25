@@ -29,7 +29,17 @@ struct Candidate {
     DIRECTION direction;
     bool clockwise;
     bool isAhead;
+    int distance;
+
     Candidate(EndPoint * point, DIRECTION dir, bool clock, bool isAhead) : point(point), direction(dir), clockwise(clock), isAhead(isAhead) {}
+
+    void setDistance(int x, int y) {
+        int xd = x - point->x;
+        int yd = y - point->y;
+        if(xd < 0) xd = -xd;
+        if(yd < 0) yd = -yd;
+        distance = xd > yd ? xd : yd;
+    }
 };
 
 struct PointComp {
@@ -51,6 +61,10 @@ struct Rectangle {
         return x >= xmin && x <= xmax && y >= ymin && y <= ymax;
     }
 };
+
+bool candComp(Candidate * lhs, Candidate * rhs) {
+    return lhs->distance == rhs->distance ? lhs->isAhead - rhs->isAhead : lhs->distance - rhs->distance;
+}
 
 int matrixW, matrixH;
 bool ** usedMatrix;
@@ -242,10 +256,66 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
     return prev;
 }
 
-EndPoint * findStartingPoint(int x, int y, Rectangle * curRect, DIRECTION & dir, bool & clockwise, int & stagesDone) {
-    //TODO: wyznaczenie 3 punktow kandydatow, wyznaczenie ktory z nich wyprzedza pozostale o 1 pokolenie,
-    //wybranie punktu do dalszego przetwarzania, zaktualizowanie orientacji,
-    //liczby pokolen na podstawie wybranego punktu, zwrocenie tego punktu
+EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool & clockwise, int & stagesDone) {
+    Candidate * candidates[3];
+    switch(dir) {
+        case RIGHT:
+            if(clockwise) {
+                candidates[0] = new Candidate(new EndPoint(r->xmin - 1, r->ymax, false),  LEFT, false,false);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymax, false), RIGHT, true, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmax, r->ymin + 1, true ),  DOWN, true, true);
+            } else {
+                candidates[0] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true),  UP, false, true);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymin, false), RIGHT, false, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmin - 1, r->ymin, false), LEFT, true, false);
+            }
+        break;
+        case DOWN:
+            if(clockwise) {
+                candidates[0] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true),  UP,  true, false);
+                candidates[1] = new Candidate(new EndPoint(r->xmax, r->ymin - 1, true),  DOWN, true, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmin - 1, r->ymin, false), LEFT, false, true);
+            } else {
+                candidates[0] = new Candidate(new EndPoint(r->xmin, r->ymax + 1, true),  UP,  true, false);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymin, false), RIGHT, false, true);
+                candidates[2] = new Candidate(new EndPoint(r->xmin, r->ymin - 1, true),  DOWN, false, false);
+            }
+        break;
+        case LEFT:
+            if(clockwise) {
+                candidates[0] = new Candidate(new EndPoint(r->xmin, r->ymax + 1, true),  UP,  true, true);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymin, false), RIGHT, false, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmin - 1, r->ymin, false), LEFT, true, false);
+            } else {
+                candidates[0] = new Candidate(new EndPoint(r->xmin - 1, r->ymax, false),  LEFT, false,false);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymax, false), RIGHT, true, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmin, r->ymin + 1, true ),  DOWN, false, true);
+            }
+        break;
+        case UP:
+            if(clockwise) {
+                candidates[0] = new Candidate(new EndPoint(r->xmin, r->ymax + 1, true),  UP,  true, false);
+                candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymax, false), RIGHT, true, true);
+                candidates[2] = new Candidate(new EndPoint(r->xmin, r->ymin - 1, true),  DOWN, false, false);
+            } else {
+                candidates[0] = new Candidate(new EndPoint(r->xmin - 1, r->ymax, false), LEFT, false, true);
+                candidates[1] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true), UP, false, false);
+                candidates[2] = new Candidate(new EndPoint(r->xmax, r->ymin - 1, true), DOWN, true, false);
+            }
+        break;
+    }
+    for(int i = 0; i < 3; i++) {
+        candidates[i]->setDistance(X, Y);
+    }
+    sort(candidates, candidates + 3, candComp);
+    dir = candidates[0]->direction;
+    clockwise = candidates[0]->clockwise;
+    stagesDone += (1 << r->k) - candidates[0]->isAhead;
+    EndPoint * res = candidates[0]->point;
+    delete candidates[1]->point;
+    delete candidates[2]->point;
+    delete[] candidates;
+    return res;
 }
 
 void solve(int x, int y) {
@@ -287,7 +357,7 @@ void solve(int x, int y) {
             closeEnough = true;
         } else {
             delete start;
-            //find new starting point (one of 3 possible)
+            //find new starting point (one of 3 possible), updating direction, orientation and number of stages done in the process
             start = findStartingPoint(X, Y, cornerRect, direction, clockwise, stagesDone);
             if(start->x == X && start->y == Y) {
                 cout<<stagesDone<<endl;
@@ -305,7 +375,9 @@ void solve(int x, int y) {
     ////PHASE 3: Simulate the final few steps
     //start simulation with cut off point set to 2^k + 1 which means that we will do 2^k + 1 iterations at most before declaring
     //that the simulation would run forever
-    cout<<simulate((1 << (BASERECT->k+1)) + 1, stagesDone)<<endl;
+    endPoints.push_back(start);
+    setUsed(start);
+    cout<<simulate(4, stagesDone)<<endl;
     delete BASERECT;
 }
 
