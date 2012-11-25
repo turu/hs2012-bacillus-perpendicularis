@@ -24,7 +24,15 @@ struct EndPoint {
     EndPoint(int x, int y, bool ver) : x(x), y(y), ver(ver){};
 };
 
-struct comp {
+struct Candidate {
+    EndPoint * point;
+    DIRECTION direction;
+    bool clockwise;
+    bool isAhead;
+    Candidate(EndPoint * point, DIRECTION dir, bool clock, bool isAhead) : point(point), direction(dir), clockwise(clock), isAhead(isAhead) {}
+};
+
+struct PointComp {
     bool operator()(EndPoint * lhs, EndPoint * rhs) {
         return lhs->x == rhs->x ? lhs->y < rhs->y : lhs->x < rhs->x;
     }
@@ -48,7 +56,7 @@ int matrixW, matrixH;
 bool ** usedMatrix;
 map<pair<int, int>, bool> usedMap;
 
-set<EndPoint*, comp> newPoints;
+set<EndPoint*, PointComp> newPoints;
 deque<EndPoint*> endPoints;
 int X, Y;
 Rectangle * BASERECT;
@@ -71,7 +79,7 @@ void setUsed(EndPoint * p) {
 
 int nextGen(int genNum, bool & collided, int iterations) {
     int totalAdded = 0;
-    //set<EndPoint*, comp> newPoints;
+    //set<EndPoint*, PointComp> newPoints;
     while(iterations--) {
         EndPoint * v = endPoints.front();
         endPoints.pop_front();
@@ -102,7 +110,7 @@ int nextGen(int genNum, bool & collided, int iterations) {
             }
         }
     }
-    for(set<EndPoint*,comp>::iterator it = newPoints.begin(); it != newPoints.end(); ++it) {
+    for(set<EndPoint*,PointComp>::iterator it = newPoints.begin(); it != newPoints.end(); ++it) {
         endPoints.push_back(*it);
     }
     newPoints.clear();
@@ -281,6 +289,13 @@ void solve(int x, int y) {
             delete start;
             //find new starting point (one of 3 possible)
             start = findStartingPoint(X, Y, cornerRect, direction, clockwise, stagesDone);
+            if(start->x == X && start->y == Y) {
+                cout<<stagesDone<<endl;
+                delete start;
+                delete cornerRect;
+                delete BASERECT;
+                return;
+            }
         }
         delete cornerRect;
     }
