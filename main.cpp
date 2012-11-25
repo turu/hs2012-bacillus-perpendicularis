@@ -63,7 +63,7 @@ struct Rectangle {
 };
 
 bool candComp(Candidate * lhs, Candidate * rhs) {
-    return lhs->distance == rhs->distance ? lhs->isAhead - rhs->isAhead : lhs->distance - rhs->distance;
+    return lhs->distance == rhs->distance ? lhs->isAhead : lhs->distance < rhs->distance;
 }
 
 int matrixW, matrixH;
@@ -203,6 +203,7 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
     };
 
     while(!ret->isInside(x, y)) {
+        //cout<<"xmin="<<ret->xmin<<" xmax="<<ret->xmax<<" ymin="<<ret->ymin<<" ymax="<<ret->ymax<<endl;
         prev->xmin = ret->xmin;
         prev->xmax = ret->xmax;
         prev->ymin = ret->ymin;
@@ -252,6 +253,8 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
         };
     }
 
+    cout<<"xmin="<<prev->xmin<<" xmax="<<prev->xmax<<" ymin="<<prev->ymin<<" ymax="<<prev->ymax<<endl;
+
     delete ret;
     return prev;
 }
@@ -263,7 +266,7 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
             if(clockwise) {
                 candidates[0] = new Candidate(new EndPoint(r->xmin - 1, r->ymax, false),  LEFT, false,false);
                 candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymax, false), RIGHT, true, false);
-                candidates[2] = new Candidate(new EndPoint(r->xmax, r->ymin + 1, true ),  DOWN, true, true);
+                candidates[2] = new Candidate(new EndPoint(r->xmax, r->ymin - 1, true ),  DOWN, true, true);
             } else {
                 candidates[0] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true),  UP, false, true);
                 candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymin, false), RIGHT, false, false);
@@ -272,9 +275,9 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
         break;
         case DOWN:
             if(clockwise) {
-                candidates[0] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true),  UP,  true, false);
+                candidates[0] = new Candidate(new EndPoint(r->xmax, r->ymax + 1, true),  UP,  false, false);
                 candidates[1] = new Candidate(new EndPoint(r->xmax, r->ymin - 1, true),  DOWN, true, false);
-                candidates[2] = new Candidate(new EndPoint(r->xmin - 1, r->ymin, false), LEFT, false, true);
+                candidates[2] = new Candidate(new EndPoint(r->xmin - 1, r->ymin, false), LEFT, true, true);
             } else {
                 candidates[0] = new Candidate(new EndPoint(r->xmin, r->ymax + 1, true),  UP,  true, false);
                 candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymin, false), RIGHT, false, true);
@@ -289,7 +292,7 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
             } else {
                 candidates[0] = new Candidate(new EndPoint(r->xmin - 1, r->ymax, false),  LEFT, false,false);
                 candidates[1] = new Candidate(new EndPoint(r->xmax + 1, r->ymax, false), RIGHT, true, false);
-                candidates[2] = new Candidate(new EndPoint(r->xmin, r->ymin + 1, true ),  DOWN, false, true);
+                candidates[2] = new Candidate(new EndPoint(r->xmin, r->ymin - 1, true ),  DOWN, false, true);
             }
         break;
         case UP:
@@ -305,7 +308,8 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
         break;
     }
     for(int i = 0; i < 3; i++) {
-        candidates[i]->setDistance(X, Y);
+        candidates[i]->setDistance(x, y);
+        //cout<<"distance="<<candidates[i]->distance<<endl;
     }
     sort(candidates, candidates + 3, candComp);
     dir = candidates[0]->direction;
@@ -314,7 +318,6 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
     EndPoint * res = candidates[0]->point;
     delete candidates[1]->point;
     delete candidates[2]->point;
-    delete[] candidates;
     return res;
 }
 
@@ -346,6 +349,7 @@ void solve(int x, int y) {
 
     //compute number of stages already passed
     int stagesDone = (BASERECT->k >= 2 ? (1 << BASERECT->k) : 1);
+    cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
 
     ////PHASE 2: Iteratively solve corner case by finding the biggest corner rectangle such that bacteriostat does not lie within
     DIRECTION direction = RIGHT; //says what direction is the starting point heading
@@ -359,6 +363,7 @@ void solve(int x, int y) {
             delete start;
             //find new starting point (one of 3 possible), updating direction, orientation and number of stages done in the process
             start = findStartingPoint(X, Y, cornerRect, direction, clockwise, stagesDone);
+            cout<<stagesDone<<" x="<<start->x<<" y="<<start->y<<" "<<direction<<" "<<clockwise<<endl;
             if(start->x == X && start->y == Y) {
                 cout<<stagesDone<<endl;
                 delete start;
@@ -370,14 +375,15 @@ void solve(int x, int y) {
         delete cornerRect;
     }
 
-    //cout<<start->x<<" "<<start->y<<endl;
+    //cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
 
     ////PHASE 3: Simulate the final few steps
     //start simulation with cut off point set to 2^k + 1 which means that we will do 2^k + 1 iterations at most before declaring
     //that the simulation would run forever
     endPoints.push_back(start);
     setUsed(start);
-    cout<<simulate(4, stagesDone)<<endl;
+    cout<<simulate((1 << (BASERECT->k+1)) + 1, stagesDone)<<endl;
+    //cout<<stagesDone<<endl;
     delete BASERECT;
 }
 
