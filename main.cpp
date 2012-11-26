@@ -324,6 +324,7 @@ int solve(int x, int y) {
         return 1;
     }
 
+    if(BASERECT != 0) delete BASERECT;
     BASERECT = findBaseRectangle(X, Y);
     bool closeEnough = false;
     reset(1 << BASERECT->k, 1 << BASERECT->k);
@@ -335,7 +336,6 @@ int solve(int x, int y) {
         start = new EndPoint(BASERECT->xmax+1, BASERECT->ymax, false);
         if(X == start->x && Y == start->y) {
             delete start;
-            delete BASERECT;
             return 1 << BASERECT->k;
         }
     }
@@ -344,6 +344,7 @@ int solve(int x, int y) {
     if(closeEnough) {
         setUsed(start);
         endPoints.push_back(start);
+        delete start;
         return simulate((1 << (BASERECT->k+1)), stagesDone);
     }
 
@@ -359,7 +360,6 @@ int solve(int x, int y) {
             if(start->x == X && start->y == Y) {
                 delete start;
                 delete cornerRect;
-                delete BASERECT;
                 return stagesDone;
             }
         }
@@ -369,11 +369,8 @@ int solve(int x, int y) {
     if(elligible(start))endPoints.push_back(start);
     setUsed(start);
     if(!borderline) {
-        int res = simulate((1 << (BASERECT->k+1)), stagesDone);
-        delete BASERECT;
-        return res;
+        return simulate((1 << (BASERECT->k+1)), stagesDone);
     } else {
-        delete BASERECT;
         return -1;
     }
 }
