@@ -1,12 +1,10 @@
-//Solution
+//Solution, roughly O(log N) with a huge constant
 #include <iostream>
 #include <set>
 #include <map>
 #include <deque>
 #include <vector>
 #include <algorithm>
-
-#define MAXDIM 1000
 
 using namespace std;
 
@@ -22,6 +20,12 @@ struct EndPoint {
     int y;
     bool ver;
     EndPoint(int x, int y, bool ver) : x(x), y(y), ver(ver){};
+};
+
+struct PointComp {
+    bool operator()(EndPoint * lhs, EndPoint * rhs) {
+        return lhs->x == rhs->x ? lhs->y < rhs->y : lhs->x < rhs->x;
+    }
 };
 
 struct Candidate {
@@ -42,11 +46,9 @@ struct Candidate {
     }
 };
 
-struct PointComp {
-    bool operator()(EndPoint * lhs, EndPoint * rhs) {
-        return lhs->x == rhs->x ? lhs->y < rhs->y : lhs->x < rhs->x;
-    }
-};
+bool candComp(Candidate * lhs, Candidate * rhs) {
+    return lhs->distance == rhs->distance ? lhs->isAhead : lhs->distance < rhs->distance;
+}
 
 struct Rectangle {
     int xmin;
@@ -62,38 +64,25 @@ struct Rectangle {
     }
 };
 
-bool candComp(Candidate * lhs, Candidate * rhs) {
-    return lhs->distance == rhs->distance ? lhs->isAhead : lhs->distance < rhs->distance;
-}
-
-int matrixW, matrixH;
-bool ** usedMatrix;
 map<pair<int, int>, bool> usedMap;
-
 set<EndPoint*, PointComp> newPoints;
 deque<EndPoint*> endPoints;
 int X, Y;
+bool borderline = false;
 Rectangle * BASERECT;
 
 bool elligible(EndPoint * p) {
     if(p->x <= 0 || p->y <= 0) return false;
     if(BASERECT->isInside(p->x, p->y)) return false;
-    if(p->x < matrixW && p->y < matrixH)
-        return !usedMatrix[p->x][p->y];
-    else
-        return !usedMap[make_pair(p->x, p->y)];
+    return !usedMap[make_pair(p->x, p->y)];
 }
 
 void setUsed(EndPoint * p) {
-    if(p->x < matrixW && p->y < matrixH)
-        usedMatrix[p->x][p->y] = true;
-    else
-        usedMap[make_pair(p->x, p->y)] = true;
+    usedMap[make_pair(p->x, p->y)] = true;
 }
 
 int nextGen(int genNum, bool & collided, int iterations) {
     int totalAdded = 0;
-    //set<EndPoint*, PointComp> newPoints;
     while(iterations--) {
         EndPoint * v = endPoints.front();
         endPoints.pop_front();
@@ -144,13 +133,7 @@ int simulate(int maxGens, int genNum) {
 void reset(int x, int y) {
     endPoints.clear();
     usedMap.clear();
-    int w = (x < matrixW-1 ? x : matrixW-1);
-    int h = (y < matrixH-1 ? y : matrixH-1);
-    for(int i = 0; i <= w; i++) {
-        for(int j = 0; j <= h; j++) {
-            usedMatrix[i][j] = false;
-        }
-    }
+    borderline = false;
 }
 
 Rectangle * findBaseRectangle(int x, int y) {
@@ -203,7 +186,6 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
     };
 
     while(!ret->isInside(x, y)) {
-        //cout<<"xmin="<<ret->xmin<<" xmax="<<ret->xmax<<" ymin="<<ret->ymin<<" ymax="<<ret->ymax<<endl;
         prev->xmin = ret->xmin;
         prev->xmax = ret->xmax;
         prev->ymin = ret->ymin;
@@ -267,13 +249,11 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
         };
     }
 
-    //cout<<"xmin="<<prev->xmin<<" xmax="<<prev->xmax<<" ymin="<<prev->ymin<<" ymax="<<prev->ymax<<endl;
-
     delete ret;
     return prev;
 }
 
-EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool & clockwise, int & stagesDone) {
+void findStartingPoint(EndPoint *& start, int x, int y, Rectangle * r, DIRECTION & dir, bool & clockwise, int & stagesDone) {
     Candidate * candidates[3];
     switch(dir) {
         case RIGHT:
@@ -323,110 +303,86 @@ EndPoint * findStartingPoint(int x, int y, Rectangle * r, DIRECTION & dir, bool 
     }
     for(int i = 0; i < 3; i++) {
         candidates[i]->setDistance(x, y);
-        //cout<<"distance="<<candidates[i]->distance<<endl;
     }
     sort(candidates, candidates + 3, candComp);
+    if(candidates[0]->distance == candidates[1]->distance) {
+        borderline = true;
+    }
     dir = candidates[0]->direction;
     clockwise = candidates[0]->clockwise;
     stagesDone += (1 << r->k) - candidates[0]->isAhead;
     EndPoint * res = candidates[0]->point;
     delete candidates[1]->point;
     delete candidates[2]->point;
-    return res;
+    delete start;
+    start = res;
 }
 
-void solve(int x, int y) {
+int solve(int x, int y) {
     X = x; Y = y;
-    if(X == 0 && (Y == 1 || Y == 0)) { //check whether bacteriostat is at stage 1
-        cout<<1<<endl;
-        return;
+    if(X == 0 && (Y == 1 || Y == 0)) {
+        return 1;
     }
 
-    ////PHASE 1: find base rectangle (2^k x 2^k-1) such that bacteriostat does not lie inside and for k+1 it would lie inside
     BASERECT = findBaseRectangle(X, Y);
     bool closeEnough = false;
     reset(1 << BASERECT->k, 1 << BASERECT->k);
-    //cout<<BASERECT->xmax<<" "<<BASERECT->ymax<<" "<<BASERECT->k<<endl;
     EndPoint * start;
-    if(BASERECT->k < 2) { //the rule works for k >= 2
+    if(BASERECT->k < 2) {
         start = new EndPoint(0,1,true);
         closeEnough = true;
     } else {
         start = new EndPoint(BASERECT->xmax+1, BASERECT->ymax, false);
         if(X == start->x && Y == start->y) {
-            cout<<(1 << BASERECT->k)<<endl;
             delete start;
             delete BASERECT;
-            return;
+            return 1 << BASERECT->k;
         }
     }
 
-    //compute number of stages already passed
     int stagesDone = (BASERECT->k >= 2 ? (1 << BASERECT->k) : 1);
-    //cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
+    if(closeEnough) {
+        setUsed(start);
+        endPoints.push_back(start);
+        return simulate((1 << (BASERECT->k+1)), stagesDone);
+    }
 
-    ////PHASE 2: Iteratively solve corner case by finding the biggest corner rectangle such that bacteriostat does not lie within
-    DIRECTION direction = RIGHT; //says what direction is the starting point heading
-    bool clockwise = true; //says if the current corner case is clockwise oriented or not
+    DIRECTION direction = RIGHT;
+    bool clockwise = true;
     Rectangle * cornerRect;
     while(!closeEnough){
         cornerRect = findCornerRectangle(X, Y, start, direction, clockwise);
         if(cornerRect->k < 2) {
             closeEnough = true;
         } else {
-            delete start;
-            //find new starting point (one of 3 possible), updating direction, orientation and number of stages done in the process
-            start = findStartingPoint(X, Y, cornerRect, direction, clockwise, stagesDone);
-            //cout<<stagesDone<<" x="<<start->x<<" y="<<start->y<<" "<<direction<<" "<<clockwise<<endl;
+            findStartingPoint(start, X, Y, cornerRect, direction, clockwise, stagesDone);
             if(start->x == X && start->y == Y) {
-                cout<<stagesDone<<endl;
                 delete start;
                 delete cornerRect;
                 delete BASERECT;
-                return;
+                return stagesDone;
             }
         }
         delete cornerRect;
     }
 
-    //cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
-
-    ////PHASE 3: Simulate the final few steps
-    //start simulation with cut off point set to 2^k + 1 which means that we will do 2^k + 1 iterations at most before declaring
-    //that the simulation would run forever
-    endPoints.push_back(start);
+    if(elligible(start))endPoints.push_back(start);
     setUsed(start);
-    cout<<simulate((1 << (BASERECT->k+1)) + 1, stagesDone)<<endl;
-    //cout<<stagesDone<<endl;
+    if(!borderline) {
+        return simulate((1 << (BASERECT->k+1)), stagesDone);
+    } else return -1;
     delete BASERECT;
-}
-
-void prepareSurface(int h, int w) {
-    matrixW = (w > MAXDIM ? MAXDIM : w);
-    matrixH = (h > MAXDIM ? MAXDIM : h);
-    usedMatrix = new bool*[matrixW];
-    for(int i = 0; i < matrixW; i++) {
-        usedMatrix[i] = new bool[matrixH];
-    }
 }
 
 int main() {
     ios_base::sync_with_stdio(0);
-    vector<pair<int, int> > testCases;
-    int t, maxx = 0, maxy = 0;
+    int t;
     cin>>t;
     while(t--) {
         cin>>X>>Y;
         if(X < 0) X = -X;
         if(Y < 0) Y = -Y;
-        if(X > maxx) maxx = X;
-        if(Y > maxy) maxy = Y;
-        testCases.push_back(make_pair(X, Y));
-    }
-    int d = (maxy > maxx ? maxy : maxx);
-    prepareSurface(2*d + 1, 2*d + 1);
-    for(int i = 0; i < testCases.size(); i++) {
-        solve(testCases[i].first, testCases[i].second);
+        cout<<solve(X, Y)<<endl;
     }
     return 0;
 }
