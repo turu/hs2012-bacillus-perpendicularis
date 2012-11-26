@@ -176,7 +176,7 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
             if(clockwise) {
                 ret = new Rectangle(start->x - 1, start->x + 1, start->y - 1, start->y + 2, 2);
             } else {
-                ret = new Rectangle(start->x - 1, start->x + 1, start->y - 1, start->y + 2, 2);
+                ret = new Rectangle(start->x - 1, start->x + 1, start->y - 2, start->y + 1, 2);
             }
         break;
         case DOWN:
@@ -190,7 +190,7 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
             if(clockwise) {
                 ret = new Rectangle(start->x - 1, start->x + 1, start->y - 2, start->y + 1, 2);
             } else {
-                ret = new Rectangle(start->x - 1, start->x + 1, start->y - 2, start->y + 1, 2);
+                ret = new Rectangle(start->x - 1, start->x + 1, start->y - 1, start->y + 2, 2);
             }
         break;
         case UP:
@@ -213,10 +213,17 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
         int d = ((1 << (ret->k - 1)) - 1); //d = (2^k - 2) / 2
         switch(dir) {
             case RIGHT:
-                ret->xmin = start->x - d;
-                ret->xmax = start->x + d;
-                ret->ymin = start->y - d;
-                ret->ymax = start->y + (d + 1);
+                if(clockwise) {
+                    ret->xmin = start->x - d;
+                    ret->xmax = start->x + d;
+                    ret->ymin = start->y - d;
+                    ret->ymax = start->y + (d + 1);
+                } else {
+                    ret->xmin = start->x - d;
+                    ret->xmax = start->x + d;
+                    ret->ymin = start->y - (d + 1);
+                    ret->ymax = start->y + d;
+                }
             break;
             case DOWN:
                 if(clockwise) {
@@ -232,10 +239,17 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
                 }
             break;
             case LEFT:
-                ret->xmin = start->x - d;
-                ret->xmax = start->x + d;
-                ret->ymin = start->y - (d + 1);
-                ret->ymax = start->y + d;
+                if(clockwise) {
+                    ret->xmin = start->x - d;
+                    ret->xmax = start->x + d;
+                    ret->ymin = start->y - (d + 1);
+                    ret->ymax = start->y + d;
+                } else {
+                    ret->xmin = start->x - d;
+                    ret->xmax = start->x + d;
+                    ret->ymin = start->y - d;
+                    ret->ymax = start->y + (d + 1);
+                }
             break;
             case UP:
                 if(clockwise) {
@@ -253,7 +267,7 @@ Rectangle * findCornerRectangle(int x, int y, EndPoint * start, DIRECTION dir, b
         };
     }
 
-    cout<<"xmin="<<prev->xmin<<" xmax="<<prev->xmax<<" ymin="<<prev->ymin<<" ymax="<<prev->ymax<<endl;
+    //cout<<"xmin="<<prev->xmin<<" xmax="<<prev->xmax<<" ymin="<<prev->ymin<<" ymax="<<prev->ymax<<endl;
 
     delete ret;
     return prev;
@@ -349,7 +363,7 @@ void solve(int x, int y) {
 
     //compute number of stages already passed
     int stagesDone = (BASERECT->k >= 2 ? (1 << BASERECT->k) : 1);
-    cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
+    //cout<<"x="<<start->x<<" y="<<start->y<<" done="<<stagesDone<<endl;
 
     ////PHASE 2: Iteratively solve corner case by finding the biggest corner rectangle such that bacteriostat does not lie within
     DIRECTION direction = RIGHT; //says what direction is the starting point heading
@@ -363,7 +377,7 @@ void solve(int x, int y) {
             delete start;
             //find new starting point (one of 3 possible), updating direction, orientation and number of stages done in the process
             start = findStartingPoint(X, Y, cornerRect, direction, clockwise, stagesDone);
-            cout<<stagesDone<<" x="<<start->x<<" y="<<start->y<<" "<<direction<<" "<<clockwise<<endl;
+            //cout<<stagesDone<<" x="<<start->x<<" y="<<start->y<<" "<<direction<<" "<<clockwise<<endl;
             if(start->x == X && start->y == Y) {
                 cout<<stagesDone<<endl;
                 delete start;
