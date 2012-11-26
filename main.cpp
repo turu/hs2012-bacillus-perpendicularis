@@ -344,7 +344,6 @@ int solve(int x, int y) {
     if(closeEnough) {
         setUsed(start);
         endPoints.push_back(start);
-        delete start;
         return simulate((1 << (BASERECT->k+1)), stagesDone);
     }
 
