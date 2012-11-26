@@ -369,9 +369,13 @@ int solve(int x, int y) {
     if(elligible(start))endPoints.push_back(start);
     setUsed(start);
     if(!borderline) {
-        return simulate((1 << (BASERECT->k+1)), stagesDone);
-    } else return -1;
-    delete BASERECT;
+        int res = simulate((1 << (BASERECT->k+1)), stagesDone);
+        delete BASERECT;
+        return res;
+    } else {
+        delete BASERECT;
+        return -1;
+    }
 }
 
 int main() {
