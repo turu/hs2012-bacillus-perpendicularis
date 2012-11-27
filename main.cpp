@@ -106,7 +106,9 @@ int nextGen(int genNum, bool & collided, int iterations) {
             } else {
                 set<EndPoint*>::iterator it = newPoints.find(newPoint[i]);
                 if(it != newPoints.end()) {
+                    EndPoint * pe = *it;
                     newPoints.erase(it);
+                    delete pe;
                     totalAdded--;
                 }
                 delete newPoint[i];
@@ -130,7 +132,9 @@ int simulate(int maxGens, int genNum) {
     return collided ? genNum : -1;
 }
 
-void reset(int x, int y) {
+void reset() {
+    for(int i = 0; i < endPoints.size(); i++)
+        delete endPoints[i];
     endPoints.clear();
     usedMap.clear();
     borderline = false;
@@ -314,6 +318,7 @@ void findStartingPoint(EndPoint *& start, int x, int y, Rectangle * r, DIRECTION
     EndPoint * res = candidates[0]->point;
     delete candidates[1]->point;
     delete candidates[2]->point;
+    for(int i=0;i<3;i++)delete candidates[i];
     delete start;
     start = res;
 }
@@ -327,7 +332,7 @@ int solve(int x, int y) {
     if(BASERECT != 0) delete BASERECT;
     BASERECT = findBaseRectangle(X, Y);
     bool closeEnough = false;
-    reset(1 << BASERECT->k, 1 << BASERECT->k);
+    reset();
     EndPoint * start;
     if(BASERECT->k < 2) {
         start = new EndPoint(0,1,true);
