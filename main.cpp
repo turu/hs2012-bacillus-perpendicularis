@@ -340,11 +340,14 @@ int solve(int x, int y) {
         }
     }
 
+    //cout<<"xmin="<<BASERECT->xmin<<" xmax="<<BASERECT->xmax<<" ymin="<<BASERECT->ymin<<" ymax="<<BASERECT->ymax<<" x="<<start->x<<" y="<<start->y<<endl;
+
+    int bound = 1 << (BASERECT->k+1);
     int stagesDone = (BASERECT->k >= 2 ? (1 << BASERECT->k) : 1);
     if(closeEnough) {
         setUsed(start);
         endPoints.push_back(start);
-        return simulate((1 << (BASERECT->k+1)), stagesDone);
+        return simulate(bound, stagesDone);
     }
 
     DIRECTION direction = RIGHT;
@@ -352,14 +355,21 @@ int solve(int x, int y) {
     Rectangle * cornerRect;
     while(!closeEnough){
         cornerRect = findCornerRectangle(X, Y, start, direction, clockwise);
+        //cout<<"xmin="<<cornerRect->xmin<<" xmax="<<cornerRect->xmax<<" ymin="<<cornerRect->ymin<<" ymax="<<cornerRect->ymax;
         if(cornerRect->k < 2) {
             closeEnough = true;
         } else {
             findStartingPoint(start, X, Y, cornerRect, direction, clockwise, stagesDone);
+            //cout<<" x="<<start->x<<" y="<<start->y<<" dir="<<direction<<" k="<<cornerRect->k<<" done="<<stagesDone<<endl;
             if(start->x == X && start->y == Y) {
                 delete start;
                 delete cornerRect;
                 return stagesDone;
+            }
+            if(stagesDone >= bound) {
+                delete start;
+                delete cornerRect;
+                return -1;
             }
         }
         delete cornerRect;
@@ -368,7 +378,7 @@ int solve(int x, int y) {
     if(elligible(start))endPoints.push_back(start);
     setUsed(start);
     if(!borderline) {
-        return simulate((1 << (BASERECT->k+1)), stagesDone);
+        return simulate(bound, stagesDone);
     } else {
         return -1;
     }
