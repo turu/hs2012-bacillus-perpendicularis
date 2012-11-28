@@ -1,4 +1,4 @@
-//Solution, roughly O(log N) with a huge constant
+//Solution, roughly O(log N) with quite a big constant. As of 27.11.2012 this code should work correctly and be free from memory leaks.
 #include <iostream>
 #include <set>
 #include <map>
@@ -349,6 +349,7 @@ int solve(int x, int y) {
 
     int bound = 1 << (BASERECT->k+1);
     int stagesDone = (BASERECT->k >= 2 ? (1 << BASERECT->k) : 1);
+    int lastK = BASERECT->k;
     if(closeEnough) {
         setUsed(start);
         endPoints.push_back(start);
@@ -371,12 +372,13 @@ int solve(int x, int y) {
                 delete cornerRect;
                 return stagesDone;
             }
-            if(stagesDone >= bound) {
+            if(stagesDone >= bound || cornerRect->k >= lastK) {
                 delete start;
                 delete cornerRect;
                 return -1;
             }
         }
+        lastK = cornerRect->k;
         delete cornerRect;
     }
 
